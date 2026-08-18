@@ -1,5 +1,5 @@
 from core.database import create_tables
-from models import Employee
+from models import Attendance, Employee, Payroll
 
 if __name__ == "__main__":
     create_tables()

@@ -4,7 +4,12 @@ from decimal import Decimal
 import pandas as pd
 import streamlit as st
 
-from services.employee_service import add_employee, get_all_employees
+from services.employee_service import (
+    add_employee,
+    get_all_employees,
+    get_employee_by_code,
+    update_employee,
+)
 
 
 st.title("👥 Employee Records")
@@ -12,7 +17,12 @@ st.title("👥 Employee Records")
 st.caption(
     "Register employees and manage their employment information."
 )
+if "employee_update_message" in st.session_state:
+    st.success(
+        st.session_state["employee_update_message"]
+    )
 
+    del st.session_state["employee_update_message"]
 st.divider()
 
 
@@ -292,3 +302,187 @@ else:
                 ),
             },
         )
+
+    st.divider()
+
+    st.subheader("✏️ Edit Employee")
+
+    st.write(
+        "Choose an employee and update their employment information."
+    )
+
+    employee_code_options = [
+        record["Employee Code"]
+        for record in employee_records
+    ]
+
+    selected_employee_code = st.selectbox(
+        "Choose Employee",
+        employee_code_options,
+        key="edit_employee_selector",
+    )
+
+    employee_to_edit, employee_error = get_employee_by_code(
+        selected_employee_code
+    )
+
+    if employee_error:
+        st.error(employee_error)
+
+    elif employee_to_edit:
+        department_choices = [
+            "Human Resources",
+            "Finance",
+            "Information Technology",
+            "Marketing",
+            "Operations",
+            "Sales",
+        ]
+
+        employment_type_choices = [
+            "Full-time",
+            "Part-time",
+            "Contract",
+        ]
+
+        status_choices = [
+            "Active",
+            "Inactive",
+            "On Leave",
+        ]
+
+        with st.form("edit_employee_form"):
+            st.text_input(
+                "Employee Code",
+                value=employee_to_edit["employee_code"],
+                disabled=True,
+            )
+
+            edited_full_name = st.text_input(
+                "Full Name *",
+                value=employee_to_edit["full_name"],
+            )
+
+            edited_email = st.text_input(
+                "Email Address *",
+                value=employee_to_edit["email"],
+            )
+
+            edited_phone = st.text_input(
+                "Phone Number",
+                value=employee_to_edit["phone"],
+            )
+
+            edited_department = st.selectbox(
+                "Department *",
+                department_choices,
+                index=(
+                    department_choices.index(
+                        employee_to_edit["department"]
+                    )
+                    if employee_to_edit["department"]
+                    in department_choices
+                    else 0
+                ),
+            )
+
+            edited_job_title = st.text_input(
+                "Job Title *",
+                value=employee_to_edit["job_title"],
+            )
+
+            edited_employment_type = st.selectbox(
+                "Employment Type *",
+                employment_type_choices,
+                index=(
+                    employment_type_choices.index(
+                        employee_to_edit["employment_type"]
+                    )
+                    if employee_to_edit["employment_type"]
+                    in employment_type_choices
+                    else 0
+                ),
+            )
+
+            edited_hire_date = st.date_input(
+                "Hire Date *",
+                value=employee_to_edit["hire_date"],
+            )
+
+            edited_base_salary = st.number_input(
+                "Annual Base Salary ($) *",
+                min_value=0.0,
+                value=employee_to_edit["base_salary"],
+                step=1000.0,
+                format="%.2f",
+            )
+
+            edited_status = st.selectbox(
+                "Employee Status *",
+                status_choices,
+                index=(
+                    status_choices.index(
+                        employee_to_edit["status"]
+                    )
+                    if employee_to_edit["status"]
+                    in status_choices
+                    else 0
+                ),
+            )
+
+            update_submitted = st.form_submit_button(
+                "Update Employee",
+                type="primary",
+            )
+
+        if update_submitted:
+            selected_employee_code = selected_employee_code or ""
+            edited_phone = edited_phone or ""
+            edited_full_name = edited_full_name or ""
+            edited_email = edited_email or ""
+            edited_job_title = edited_job_title or ""
+            if not edited_full_name.strip():
+                st.error("Full name is required.")
+
+            elif (
+                not edited_email.strip()
+                or "@" not in edited_email
+                or "." not in edited_email
+            ):
+                st.error(
+                    "Please enter a valid email address."
+                )
+
+            elif not edited_job_title.strip():
+                st.error("Job title is required.")
+
+            elif edited_base_salary <= 0:
+                st.error(
+                    "Base salary must be greater than zero."
+                )
+
+            else:
+                success, message = update_employee(
+                    employee_code=selected_employee_code,
+                    full_name=edited_full_name,
+                    email=edited_email,
+                    phone=edited_phone,
+                    department=edited_department,
+                    job_title=edited_job_title,
+                    employment_type=edited_employment_type,
+                    hire_date=edited_hire_date,
+                    base_salary=Decimal(
+                        str(edited_base_salary)
+                    ),
+                    status=edited_status,
+                )
+
+                if success:
+                    st.session_state[
+                        "employee_update_message"
+                    ] = message
+
+                    st.rerun()
+
+                else:
+                    st.error(message)

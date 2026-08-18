@@ -92,3 +92,98 @@ def get_all_employees() -> tuple[list[dict], str | None]:
 
     finally:
         session.close()
+def get_employee_by_code(
+    employee_code: str,
+) -> tuple[dict | None, str | None]:
+    """Return one employee using their employee code."""
+
+    session = SessionLocal()
+
+    try:
+        statement = select(Employee).where(
+            Employee.employee_code
+            == employee_code.strip().upper()
+        )
+
+        employee = session.scalar(statement)
+
+        if employee is None:
+            return None, "Employee could not be found."
+
+        employee_record = {
+            "employee_code": employee.employee_code,
+            "full_name": employee.full_name,
+            "email": employee.email,
+            "phone": employee.phone or "",
+            "department": employee.department,
+            "job_title": employee.job_title,
+            "employment_type": employee.employment_type,
+            "hire_date": employee.hire_date,
+            "base_salary": float(employee.base_salary),
+            "status": employee.status,
+        }
+
+        return employee_record, None
+
+    except Exception as error:
+        return None, f"Could not load employee: {error}"
+
+    finally:
+        session.close()
+
+
+def update_employee(
+    employee_code: str,
+    full_name: str,
+    email: str,
+    phone: str,
+    department: str,
+    job_title: str,
+    employment_type: str,
+    hire_date: date,
+    base_salary: Decimal,
+    status: str,
+) -> tuple[bool, str]:
+    """Update an existing employee's information."""
+
+    session = SessionLocal()
+
+    try:
+        statement = select(Employee).where(
+            Employee.employee_code
+            == employee_code.strip().upper()
+        )
+
+        employee = session.scalar(statement)
+
+        if employee is None:
+            return False, "Employee could not be found."
+
+        employee.full_name = full_name.strip()
+        employee.email = email.strip().lower()
+        employee.phone = phone.strip() or None
+        employee.department = department
+        employee.job_title = job_title.strip()
+        employee.employment_type = employment_type
+        employee.hire_date = hire_date
+        employee.base_salary = base_salary
+        employee.status = status
+
+        session.commit()
+
+        return True, "Employee updated successfully."
+
+    except IntegrityError:
+        session.rollback()
+
+        return False, (
+            "That email address already belongs to another employee."
+        )
+
+    except Exception as error:
+        session.rollback()
+
+        return False, f"Could not update employee: {error}"
+
+    finally:
+        session.close()
