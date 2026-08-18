@@ -1,5 +1,15 @@
 import streamlit as st
+
 from services.auth_service import verify_password
+from core.database import create_tables
+from models import (
+    AppSettings,
+    Attendance,
+    Employee,
+    Payroll,
+)
+# Create database tables if they do not exist
+create_tables()
 # ---------------------------------------------------------
 # Beautify section
 # ---------------------------------------------------------
